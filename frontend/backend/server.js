@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 
-
+//add contacts
 app.post("/add-contact", async (req, res) => {
     const { name, phone } = req.body;
     if (!name || !phone) {
@@ -87,5 +87,42 @@ app.post("/login", async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
+
+//for authentication 
+const jwt = require("jsonwebtoken");
+
+// Middleware to verify token
+const authenticateUser = (req, res, next) => {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+        return res.status(403).json({ error: "Unauthorized Access" });
+    }
+
+    try {
+        const decoded = jwt.verify(token, "your_secret_key");
+        req.user = decoded;
+        next();
+    } catch (error) {
+        res.status(401).json({ error: "Invalid Token" });
+    }
+};
+
+// Protect the panic alert route
+app.post("/panic-alert", authenticateUser, (req, res) => {
+    console.log("Panic Alert Received from User ID:", req.user.id);
+    res.json({ message: "Alert Sent!" });
+});
+
+// Protect the emergency contacts route
+app.get("/emergency-contacts", authenticateUser, async (req, res) => {
+    try {
+        const [contacts] = await db.execute("SELECT * FROM contacts WHERE user_id = ?", [req.user.id]);
+        res.json(contacts);
+    } catch (error) {
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+
 
 
